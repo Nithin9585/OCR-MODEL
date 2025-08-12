@@ -1,0 +1,6 @@
+flask
+easyocr
+torch
+pdf2image
+Pillow
+scikit-image
