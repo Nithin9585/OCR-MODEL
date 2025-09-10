@@ -18,15 +18,11 @@ def process_document(file_path, languages=None):
 
     lang_key = tuple(languages)
     if lang_key not in readers:
-        # Use minimal memory settings for EasyOCR
+        # Initialize EasyOCR with memory optimization
         readers[lang_key] = easyocr.Reader(
             languages, 
             gpu=False,
-            download_enabled=True,
-            detector=True,
-            recognizer=True,
-            verbose=False,
-            quantize=True  # Use quantized models to save memory
+            verbose=False
         )
 
     reader = readers[lang_key]
@@ -67,21 +63,30 @@ def process_document(file_path, languages=None):
                 os.remove(temp_img_path)
     else:
         # If it's not a PDF, process it as a regular image
-        # Optimize image size to reduce memory usage
+        # Simple image processing with memory optimization
+        optimized_path = None
         try:
+            # Check and resize image if too large
             img = Image.open(file_path)
             if img.size[0] > MAX_IMAGE_SIZE[0] or img.size[1] > MAX_IMAGE_SIZE[1]:
+                print(f"Resizing image from {img.size} to fit {MAX_IMAGE_SIZE}")
                 img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
                 with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_img:
-                    img.save(tmp_img.name, 'JPEG', quality=85)
+                    img.save(tmp_img.name, 'JPEG', quality=90)
                     optimized_path = tmp_img.name
+                img.close()  # Free memory
                 results = reader.readtext(optimized_path, detail=1)
-                os.remove(optimized_path)  # Clean up
             else:
+                img.close()  # Free memory
                 results = reader.readtext(file_path, detail=1)
         except Exception as e:
-            # Fallback to original processing
+            print(f"Image optimization failed: {e}")
+            # Fallback to direct processing
             results = reader.readtext(file_path, detail=1)
+        finally:
+            # Clean up optimized file if created
+            if optimized_path and os.path.exists(optimized_path):
+                os.remove(optimized_path)
         page_data = {"page_number": 1, "blocks": []}
 
         for bbox, text, confidence in results:
