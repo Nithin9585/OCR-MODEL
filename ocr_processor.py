@@ -1,8 +1,12 @@
 import easyocr
 import numpy as np
 from pdf2image import convert_from_path
+from PIL import Image
 import os
 import tempfile
+
+# Memory optimization settings
+MAX_IMAGE_SIZE = (2048, 2048)  # Limit image size to reduce memory usage
 
 # Initialize EasyOCR reader cache
 readers = {}
@@ -14,7 +18,16 @@ def process_document(file_path, languages=None):
 
     lang_key = tuple(languages)
     if lang_key not in readers:
-        readers[lang_key] = easyocr.Reader(languages, gpu=False)
+        # Use minimal memory settings for EasyOCR
+        readers[lang_key] = easyocr.Reader(
+            languages, 
+            gpu=False,
+            download_enabled=True,
+            detector=True,
+            recognizer=True,
+            verbose=False,
+            quantize=True  # Use quantized models to save memory
+        )
 
     reader = readers[lang_key]
     all_results = {"pages": []}
@@ -54,7 +67,21 @@ def process_document(file_path, languages=None):
                 os.remove(temp_img_path)
     else:
         # If it's not a PDF, process it as a regular image
-        results = reader.readtext(file_path, detail=1)
+        # Optimize image size to reduce memory usage
+        try:
+            img = Image.open(file_path)
+            if img.size[0] > MAX_IMAGE_SIZE[0] or img.size[1] > MAX_IMAGE_SIZE[1]:
+                img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_img:
+                    img.save(tmp_img.name, 'JPEG', quality=85)
+                    optimized_path = tmp_img.name
+                results = reader.readtext(optimized_path, detail=1)
+                os.remove(optimized_path)  # Clean up
+            else:
+                results = reader.readtext(file_path, detail=1)
+        except Exception as e:
+            # Fallback to original processing
+            results = reader.readtext(file_path, detail=1)
         page_data = {"page_number": 1, "blocks": []}
 
         for bbox, text, confidence in results:
