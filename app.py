@@ -1,17 +1,25 @@
 import os
 import tempfile
+import warnings
 
 from flask import Flask, request, jsonify
 from ocr_processor import process_document
 from werkzeug.utils import secure_filename
 import logging
 
+# Suppress all warnings and logging
+warnings.filterwarnings("ignore")
+logging.getLogger().setLevel(logging.ERROR)
+os.environ['PYTHONWARNINGS'] = 'ignore'
 
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+# Disable Flask logging
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 # Configure for production
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Minimal startup - no preloading to save memory
 
 
 def allowed_file(filename):
@@ -74,8 +82,8 @@ def ocr_endpoint():
         try:
             result = process_document(tmp_path, languages)
         except Exception as e:
-            logging.error(f"OCR processing failed: {e}")
-            return jsonify({"error": "OCR processing failed", "details": str(e)}), 500
+            # Silent error handling - no logging
+            return jsonify({"error": "OCR processing failed"}), 500
         return jsonify(result)
     finally:
         os.remove(tmp_path)

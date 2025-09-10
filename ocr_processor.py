@@ -4,6 +4,17 @@ from pdf2image import convert_from_path
 from PIL import Image
 import os
 import tempfile
+import logging
+import warnings
+
+# Suppress all warnings and verbose output
+warnings.filterwarnings("ignore")
+logging.getLogger("easyocr").setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.ERROR)
+
+# Disable progress bars and verbose output
+os.environ['EASYOCR_VERBOSE'] = '0'
+os.environ['PYTHONWARNINGS'] = 'ignore'
 
 # Memory optimization settings
 MAX_IMAGE_SIZE = (2048, 2048)  # Limit image size to reduce memory usage
@@ -18,12 +29,16 @@ def process_document(file_path, languages=None):
 
     lang_key = tuple(languages)
     if lang_key not in readers:
-        # Initialize EasyOCR with memory optimization
-        readers[lang_key] = easyocr.Reader(
-            languages, 
-            gpu=False,
-            verbose=False
-        )
+        # Initialize EasyOCR with minimal output and memory optimization
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            readers[lang_key] = easyocr.Reader(
+                languages, 
+                gpu=False,
+                verbose=False,
+                model_storage_directory=None,
+                download_enabled=True
+            )
 
     reader = readers[lang_key]
     all_results = {"pages": []}
@@ -69,7 +84,7 @@ def process_document(file_path, languages=None):
             # Check and resize image if too large
             img = Image.open(file_path)
             if img.size[0] > MAX_IMAGE_SIZE[0] or img.size[1] > MAX_IMAGE_SIZE[1]:
-                print(f"Resizing image from {img.size} to fit {MAX_IMAGE_SIZE}")
+                # Silently resize image
                 img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
                 with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_img:
                     img.save(tmp_img.name, 'JPEG', quality=90)
@@ -79,9 +94,8 @@ def process_document(file_path, languages=None):
             else:
                 img.close()  # Free memory
                 results = reader.readtext(file_path, detail=1)
-        except Exception as e:
-            print(f"Image optimization failed: {e}")
-            # Fallback to direct processing
+        except Exception:
+            # Silent fallback to direct processing
             results = reader.readtext(file_path, detail=1)
         finally:
             # Clean up optimized file if created
