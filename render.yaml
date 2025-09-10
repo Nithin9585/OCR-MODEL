@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ocr-model
+    env: python
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app --timeout 120 --workers 1
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: OCR_LANGUAGES
+        value: en
