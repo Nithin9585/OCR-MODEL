@@ -1,8 +1,33 @@
-# OCR Backend with Layout Extraction
+# OCR Service - Railway Deployment Ready
 
-## 1️⃣ Installation
+## Overview
+This directory contains a standalone OCR service that can be deployed on Railway as a microservice.
+
+## Features
+- Image OCR processing (PNG, JPG, JPEG, PDF)
+- Multi-language support
+- Health check endpoint
+- Production-ready with Gunicorn
+
+## Railway Deployment Steps
+
+### 1. Create New Railway Project
+1. Go to [Railway.app](https://railway.app)
+2. Click "New Project"
+3. Choose "Deploy from GitHub repo"
+4. Select this repository
+5. Choose the `OCR-MODEL` directory as the root
+
+### 2. Deploy Configuration
+Railway will automatically:
+- Detect the `railway.json` configuration
+- Install dependencies from `requirements-railway.txt`
+- Start the service with Gunicorn
+- Assign a public URL
+
+## 1️⃣ Local Installation
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-railway.txt
 ```
 
 ---

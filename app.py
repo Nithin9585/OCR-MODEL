@@ -10,10 +10,34 @@ import logging
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Configure for production
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
 
 def allowed_file(filename):
-    allowed_extensions = {'.png', '.jpg', '.jpeg'}
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.pdf'}
     return os.path.splitext(filename)[1].lower() in allowed_extensions
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for Railway"""
+    return jsonify({
+        "status": "healthy",
+        "service": "OCR Service",
+        "version": "1.0.0"
+    }), 200
+
+@app.route("/", methods=["GET"])
+def root():
+    """Root endpoint"""
+    return jsonify({
+        "message": "OCR Service API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "ocr": "/ocr (POST)"
+        }
+    }), 200
 
 @app.route("/ocr", methods=["POST"])
 def ocr_endpoint():
@@ -27,7 +51,7 @@ def ocr_endpoint():
 
     # Validate file type
     if not allowed_file(filename):
-        return jsonify({"error": "Unsupported file type. Only PNG, JPG, JPEG allowed."}), 400
+        return jsonify({"error": "Unsupported file type. Only PNG, JPG, JPEG, PDF allowed."}), 400
 
     # Validate file size (limit to 10MB)
     file.seek(0, os.SEEK_END)
@@ -57,4 +81,5 @@ def ocr_endpoint():
         os.remove(tmp_path)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)
