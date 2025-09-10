@@ -28,5 +28,13 @@ COPY . .
 # Expose port
 EXPOSE $PORT
 
-# Command to run the application
-CMD gunicorn --bind 0.0.0.0:$PORT app:app --timeout 120 --workers 1
+# Command to run the application with optimized settings
+CMD gunicorn --bind 0.0.0.0:$PORT app:app \
+    --timeout 300 \
+    --workers 1 \
+    --worker-class sync \
+    --worker-connections 1000 \
+    --max-requests 100 \
+    --max-requests-jitter 10 \
+    --preload \
+    --log-level info
